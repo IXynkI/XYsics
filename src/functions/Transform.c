@@ -33,13 +33,11 @@ Vector2 transformPoint(Transform t, Vector2 p)
 {
     Vector2 result;
     // Rotation
-    result.x = t.R.m00 * p.x + t.R.m01 * p.y;
-    result.y = t.R.m10 * p.x + t.R.m11 * p.y;
+    result.x = (float)t.R.m00 * (float)p.x + (float)t.R.m01 * (float)p.y;
+    result.y = (float)t.R.m10 * (float)p.x + (float)t.R.m11 * (float)p.y;
     // Position
-    result.x += t.pos.x;
-    result.y += t.pos.y;
-
-    printf("TransformPoint: input (%f,%f) -> output (%f,%f)\n", p.x, p.y, result.x, result.y);
+    result.x += (float)t.pos.x;
+    result.y += (float)t.pos.y;
 
     return result;
 }
@@ -53,6 +51,7 @@ void transformPoints(Transform t, Vector2 points[], size_t count, Vector2 result
 }
 
 float getRotationalAngleRad(Matrix2 R){
+    printf("R.m00=%.2f, R.m10=%.2f\n", R.m00, R.m10);
     return atan2(R.m10, R.m00);
 }
 float getRotationalAngleDeg(Matrix2 R){

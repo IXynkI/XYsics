@@ -1,7 +1,6 @@
 #include <Shapes.h>
 #include <functions/Transform.h>
 
-
 void updateAABB(Shape *shape)
 {
     switch (shape->type)
@@ -84,8 +83,6 @@ void computePolygonAABB(Shape *shape)
     }
 }
 
-
-
 Shape createBox(float height, float width, Vector2 pos, float angle)
 {
     Shape box;
@@ -123,69 +120,83 @@ Shape createCircle(float r, Vector2 pos)
     return circle;
 }
 
-Shape createPolygon(Vector2 points[], size_t count, Vector2 pos, float angle)
+Shape *createPolygon(Vector2 points[], size_t count, Vector2 pos, float angle)
 {
-    Shape polygon = {0};
-    polygon.type = SHAPE_POLYGON;
+    Shape *polygon = malloc(sizeof(Shape));
+    if (!polygon)
+        return NULL;
+
+    polygon->type = SHAPE_POLYGON;
 
     PolygonShapeData *polyData = malloc(sizeof(PolygonShapeData));
-    if (!polyData) {
-        return (Shape){0};
+    if (!polyData)
+    {
+        free(polygon);
+        return NULL;
     }
 
     polyData->points = malloc(sizeof(Vector2) * count);
-    if (!polyData->points) {
+    if (!polyData->points)
+    {
         free(polyData);
-        return (Shape){0};
+        free(polygon);
+        return NULL;
     }
 
-    for (size_t i = 0; i < count; i++) {
+    for (size_t i = 0; i < count; i++)
+    {
         polyData->points[i] = points[i];
     }
     polyData->count = count;
 
-    polygon.data = polyData;
-    polygon.transform.pos = pos;
-    polygon.transform.R = createRotationMatrix(angle);
+    polygon->data = polyData;
+    polygon->transform.pos = pos;
+    polygon->transform.R = createRotationMatrix(angle);
 
-    computePolygonAABB(&polygon);
+    computePolygonAABB(polygon);
+
     return polygon;
 }
 
-Shape convertBoxToPoly(Shape *box){
+Shape *convertBoxToPoly(Shape *box)
+{
     BoxShapeData *boxData = (BoxShapeData *)box->data;
     int BOX_POINTS_COUNT = 4;
 
-    Vector2 points0[BOX_POINTS_COUNT];
+    Vector2 *points0 = malloc(sizeof(Vector2) * BOX_POINTS_COUNT);
 
     points0[0] = (Vector2){boxData->width / 2, boxData->height / 2};
     points0[1] = (Vector2){-boxData->width / 2, boxData->height / 2};
     points0[2] = (Vector2){-boxData->width / 2, -boxData->height / 2};
     points0[3] = (Vector2){boxData->width / 2, -boxData->height / 2};
-
-    return createPolygon(points0, BOX_POINTS_COUNT, box->transform.pos, getRotationalAngleDeg(box->transform.R));
+    Shape *result = createPolygon(points0, BOX_POINTS_COUNT, box->transform.pos, getRotationalAngleDeg(box->transform.R));
+    free(points0);
+    return result;
 }
 
+void deleteShape(Shape *shape)
+{
+    if (shape == NULL || shape->data == NULL)
+        return;
 
-void deleteShape(Shape *shape) {
-    if (shape == NULL || shape->data == NULL) return;
+    switch (shape->type)
+    {
+    case SHAPE_BOX:
+    case SHAPE_CIRCLE:
+        free(shape->data);
+        break;
 
-    switch (shape->type) {
-        case SHAPE_BOX:
-        case SHAPE_CIRCLE:
-            free(shape->data);
-            break;
-
-        case SHAPE_POLYGON: {
-            PolygonShapeData *data = (PolygonShapeData *)shape->data;
-            free(data->points);
-            free(data);
-            break;
-        }
-
-        default:
-            break;
+    case SHAPE_POLYGON:
+    {
+        PolygonShapeData *data = (PolygonShapeData *)shape->data;
+        free(data->points);
+        free(data);
+        break;
     }
 
-    shape->data = NULL; 
+    default:
+        break;
+    }
+
+    shape->data = NULL;
 }

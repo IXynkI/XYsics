@@ -1,5 +1,6 @@
 #include <render/Render.h>
 #include <PhysicsCore.h>
+#include <Collision.h>
 
 void setGCStyle(unsigned int background, unsigned int foreground, unsigned int line, unsigned int fill)
 {
@@ -53,6 +54,14 @@ void drawLine(Vector2 *p1, Vector2 *p2)
 void drawBox(Shape *shape)
 {
     BoxShapeData *data = (BoxShapeData *)shape->data;
+    Matrix2 *m = &shape->transform.R;
+
+    /*
+        printf("Matrix:\n");
+    printf("[ %f  %f ]\n", m->m00, m->m01);
+    printf("[ %f  %f ]\n", m->m10, m->m11);
+    
+    */
 
     float halfW = data->width / 2;
     float halfH = data->height / 2;
@@ -60,22 +69,12 @@ void drawBox(Shape *shape)
     Vector2 points[4] = {
         {-halfW, -halfH}, {halfW, -halfH}, {halfW, halfH}, {-halfW, halfH}};
 
-    printf("\n Box points before transform \n");
-    for (size_t i = 0; i < 4; i++)
-    {
-        printf("\nX: %f, Y: %f", points[i].x, points[i].y);
-    }
     
     for (size_t i = 0; i < 4; i++)
     {
         points[i] = transformPoint(shape->transform, points[i]);
     }
 
-    printf("\n\nBox points after transform \n");
-    for (size_t i = 0; i < 4; i++)
-    {
-        printf("\nX: %f, Y: %f", points[i].x, points[i].y);
-    }
 
     for (size_t i = 0; i < 4; i++)
     {

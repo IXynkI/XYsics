@@ -451,13 +451,21 @@ bool checkNarrowCircleCircle(Shape *circle0, Shape *circle1, CollisionPair *coll
     }
     return false;
 }
-bool checkNarrowCirclePolygon(Shape *polygon, Shape *circle, CollisionPair *collPair)
+bool checkNarrowPolygonCircle(Shape *polygon, Shape *circle, CollisionPair *collPair)
 {
+
+    if(polygon->type != SHAPE_POLYGON){
+        printf("Polygon isn't polygon");
+    }
     PolygonShapeData *polygonData = (PolygonShapeData *)polygon->data;
-    CircleShapeData *circleData = (CircleShapeData *)circle->data;
 
     Vector2 transformedPoints[polygonData->count];
     transformPoints(polygon->transform, polygonData->points, polygonData->count, transformedPoints);
+
+    collPair->contactCount = 0;
+    collPair->collided = false;
+    CircleShapeData *circleData = (CircleShapeData *)circle->data;
+    
 
     Vector2 closestPoint = transformedPoints[0];
 
@@ -520,7 +528,6 @@ bool checkNarrowCirclePolygon(Shape *polygon, Shape *circle, CollisionPair *coll
     collPair->contactPoints[collPair->contactCount++] = closestPoint;
     collPair->axis = multiplyVectorF(&separationNormal, penetration);
     collPair->MTVlength = penetration;
-
     return true;
 }
 bool checkNarrowPolygonPolygon(Shape *polygon0, Shape *polygon1, CollisionPair *collPair)
@@ -737,18 +744,9 @@ bool checkNarrowPolygonPolygon(Shape *polygon0, Shape *polygon1, CollisionPair *
 bool checkNarrowBoxPolygon(Shape *box, Shape *polygon, CollisionPair *collPair)
 {
     // Making polygon out of box
-    Shape polygon0;
-    BoxShapeData *boxData0 = (BoxShapeData *)box->data;
-    size_t BOX_POINTS_COUNT = 4;
-    Vector2 points0[BOX_POINTS_COUNT];
-    points0[0] = (Vector2){boxData0->width / 2, boxData0->height / 2};
-    points0[1] = (Vector2){-boxData0->width / 2, boxData0->height / 2};
-    points0[2] = (Vector2){-boxData0->width / 2, -boxData0->height / 2};
-    points0[3] = (Vector2){boxData0->width / 2, -boxData0->height / 2};
-    float angle = getRotationalAngleDeg(box->transform.R);
-    polygon0 = createPolygon(points0, BOX_POINTS_COUNT, box->transform.pos, angle);
+    Shape *polygon0 = convertBoxToPoly(box);
 
-    return checkNarrowPolygonPolygon(&polygon0, polygon, collPair);
+    return checkNarrowPolygonPolygon(polygon0, polygon, collPair);
 }
 
 bool GJK(Vector2 verticies1[], size_t count1, Vector2 verticies2[], size_t count2)
@@ -860,11 +858,11 @@ void checkNarrow(RigidBody **bodies, CollisionPairs *collPairs, CollisionPairs *
 {
     for (size_t i = 0; i < collPairs->count; i++)
     {
-        Shape shapeA = bodies[collPairs->pairs[i].idA]->shape;
-        Shape shapeB = bodies[collPairs->pairs[i].idB]->shape;
+        Shape *shapeA = &bodies[collPairs->pairs[i].idA]->shape;
+        Shape *shapeB = &bodies[collPairs->pairs[i].idB]->shape;
 
-        ShapeType typeA = shapeA.type;
-        ShapeType typeB = shapeB.type;
+        ShapeType typeA = shapeA->type;
+        ShapeType typeB = shapeB->type;
 
         // Messy solution. Might rework in future
         if (typeA == SHAPE_CIRCLE)
@@ -872,23 +870,35 @@ void checkNarrow(RigidBody **bodies, CollisionPairs *collPairs, CollisionPairs *
             if (typeB == SHAPE_CIRCLE)
             {
                 CollisionPair narrowResult;
-                checkNarrowCircleCircle(&shapeA, &shapeB, &narrowResult);
+                checkNarrowCircleCircle(shapeA, shapeB, &narrowResult);
                 if (narrowResult.collided == true)
+                {
+                    narrowResult.idA = collPairs->pairs[i].idA;
+                    narrowResult.idB = collPairs->pairs[i].idB;
                     addCollisionPair(canditates, narrowResult);
+                }
             }
             if (typeB == SHAPE_BOX)
             {
                 CollisionPair narrowResult;
-                checkNarrowBoxCircle(&shapeB, &shapeA, &narrowResult);
+                checkNarrowBoxCircle(shapeB, shapeA, &narrowResult);
                 if (narrowResult.collided == true)
+                {
+                    narrowResult.idA = collPairs->pairs[i].idA;
+                    narrowResult.idB = collPairs->pairs[i].idB;
                     addCollisionPair(canditates, narrowResult);
+                }
             }
             if (typeB == SHAPE_POLYGON)
             {
                 CollisionPair narrowResult;
-                checkNarrowCirclePolygon(&shapeA, &shapeB, &narrowResult);
+                checkNarrowPolygonCircle(shapeB, shapeA, &narrowResult);
                 if (narrowResult.collided == true)
+                {
+                    narrowResult.idA = collPairs->pairs[i].idA;
+                    narrowResult.idB = collPairs->pairs[i].idB;
                     addCollisionPair(canditates, narrowResult);
+                }
             }
         }
         else if (typeA == SHAPE_BOX)
@@ -896,23 +906,35 @@ void checkNarrow(RigidBody **bodies, CollisionPairs *collPairs, CollisionPairs *
             if (typeB == SHAPE_CIRCLE)
             {
                 CollisionPair narrowResult;
-                checkNarrowBoxCircle(&shapeA, &shapeB, &narrowResult);
+                checkNarrowBoxCircle(shapeA, shapeB, &narrowResult);
                 if (narrowResult.collided == true)
+                {
+                    narrowResult.idA = collPairs->pairs[i].idA;
+                    narrowResult.idB = collPairs->pairs[i].idB;
                     addCollisionPair(canditates, narrowResult);
+                }
             }
             if (typeB == SHAPE_BOX)
             {
                 CollisionPair narrowResult;
-                checkNarrowBoxBox(&shapeA, &shapeB, &narrowResult);
+                checkNarrowBoxBox(shapeA, shapeB, &narrowResult);
                 if (narrowResult.collided == true)
+                {
+                    narrowResult.idA = collPairs->pairs[i].idA;
+                    narrowResult.idB = collPairs->pairs[i].idB;
                     addCollisionPair(canditates, narrowResult);
+                }
             }
             if (typeB == SHAPE_POLYGON)
             {
                 CollisionPair narrowResult;
-                checkNarrowBoxPolygon(&shapeA, &shapeB, &narrowResult);
+                checkNarrowBoxPolygon(shapeA, shapeB, &narrowResult);
                 if (narrowResult.collided == true)
+                {
+                    narrowResult.idA = collPairs->pairs[i].idA;
+                    narrowResult.idB = collPairs->pairs[i].idB;
                     addCollisionPair(canditates, narrowResult);
+                }
             }
         }
         else if (typeA == SHAPE_POLYGON)
@@ -920,23 +942,35 @@ void checkNarrow(RigidBody **bodies, CollisionPairs *collPairs, CollisionPairs *
             if (typeB == SHAPE_CIRCLE)
             {
                 CollisionPair narrowResult;
-                checkNarrowCirclePolygon(&shapeB, &shapeA, &narrowResult);
+                checkNarrowPolygonCircle(shapeA, shapeB, &narrowResult);
                 if (narrowResult.collided == true)
+                {
+                    narrowResult.idA = collPairs->pairs[i].idA;
+                    narrowResult.idB = collPairs->pairs[i].idB;
                     addCollisionPair(canditates, narrowResult);
+                }
             }
             if (typeB == SHAPE_BOX)
             {
                 CollisionPair narrowResult;
-                checkNarrowBoxPolygon(&shapeB, &shapeA, &narrowResult);
+                checkNarrowBoxPolygon(shapeB, shapeA, &narrowResult);
                 if (narrowResult.collided == true)
+                {
+                    narrowResult.idA = collPairs->pairs[i].idA;
+                    narrowResult.idB = collPairs->pairs[i].idB;
                     addCollisionPair(canditates, narrowResult);
+                }
             }
             if (typeB == SHAPE_POLYGON)
             {
                 CollisionPair narrowResult;
-                checkNarrowPolygonPolygon(&shapeA, &shapeB, &narrowResult);
+                checkNarrowPolygonPolygon(shapeA, shapeB, &narrowResult);
                 if (narrowResult.collided == true)
+                {
+                    narrowResult.idA = collPairs->pairs[i].idA;
+                    narrowResult.idB = collPairs->pairs[i].idB;
                     addCollisionPair(canditates, narrowResult);
+                }
             }
         }
     }
@@ -951,6 +985,7 @@ void resolveCollisionPairs(RigidBody **bodies, CollisionPairs *collPairs)
 }
 void resolveCollisionPair(RigidBody **bodies, CollisionPair *collPair)
 {
+
     RigidBody *bodyA = bodies[collPair->idA];
     RigidBody *bodyB = bodies[collPair->idB];
 
@@ -1033,6 +1068,7 @@ void checkAndResolveCollisions(World *w)
 {
     if (w->bodies_count == 0 || w->bodies_count == 1)
     {
+        printf("Collision check aborted");
         return;
     }
     // For filling in broad phase

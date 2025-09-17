@@ -50,9 +50,9 @@ void computeCircleAABB(Shape *shape);
 void computePolygonAABB(Shape *shape);
 
 Shape createBox(float height, float width, Vector2 pos, float angle);
-Shape createPolygon(Vector2 points[], size_t count, Vector2 pos, float angle);
+Shape *createPolygon(Vector2 points[], size_t count, Vector2 pos, float angle);
 Shape createCircle(float r, Vector2 pos);
-Shape convertBoxToPoly(Shape *box);
+Shape *convertBoxToPoly(Shape *box);
 void deleteShape(Shape *shape);
 
 

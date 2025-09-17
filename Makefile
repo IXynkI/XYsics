@@ -2,7 +2,7 @@
 CC = gcc
 
 # Флаги компиляции
-CFLAGS = -fsanitize=address -g -Wall -std=gnu99 -I./include
+CFLAGS = -fsanitize=address -g -Wall -O0 -std=gnu99 -I./include
 
 # Флаги линковки (библиотеки)
 LDFLAGS = -fsanitize=address -lX11 -lm

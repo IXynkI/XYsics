@@ -21,12 +21,12 @@ int main()
 
     world = initWorld(BODIES_COUNT);
     Shape shape0 = createBox(100, 100, pos, 90);
-    RigidBody *body0 = createRigidBody(shape0, linearVel, force, 0, 0, 0, 0, 1, 1);
+    RigidBody *body0 = createRigidBody(shape0, linearVel, force, 0, 0, 30, 0, 1, 1);
     addBody(&world, body0);
 
-    /*
-        Shape shape1 = createCircle(10, pos2);
-    RigidBody *body1 = createRigidBody(shape1, linearVel, force, 0, 0, 3, 0, 1, 1);
+    Vector2 linearVel2 = {-100, -30};
+    Shape shape1 = createCircle(100.0f, pos2);
+    RigidBody *body1 = createRigidBody(shape1, linearVel2, force, 0, 0, 3, 0, 1, 1);
     addBody(&world, body1);
 
     Vector2 points[3];
@@ -34,7 +34,7 @@ int main()
     {
         if (i % 2 == 0)
         {
-            points[i] = (Vector2){i * 10, 10 + i * 10};
+            points[i] = (Vector2){i * 20, 10 + i * 10};
         }
         else
         {
@@ -42,11 +42,11 @@ int main()
         }
     }
 
-    Shape shape2 = createPolygon(points, 3, pos, 0);
-    RigidBody *body2 = createRigidBody(shape2, linearVel, force, 0, 0, 3, 0, 1, 1);
+    Shape *shape2 = createPolygon(points, 3, pos, 0);
+    RigidBody *body2 = createRigidBody(*shape2, linearVel, force, 0, 0, 3, 0, 1, 1);
     addBody(&world, body2);
 
-    */
+    
     
     if (!windowInit(1280, 720, "test"))
     {
