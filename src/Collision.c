@@ -454,7 +454,8 @@ bool checkNarrowCircleCircle(Shape *circle0, Shape *circle1, CollisionPair *coll
 bool checkNarrowPolygonCircle(Shape *polygon, Shape *circle, CollisionPair *collPair)
 {
 
-    if(polygon->type != SHAPE_POLYGON){
+    if (polygon->type != SHAPE_POLYGON)
+    {
         printf("Polygon isn't polygon");
     }
     PolygonShapeData *polygonData = (PolygonShapeData *)polygon->data;
@@ -465,7 +466,6 @@ bool checkNarrowPolygonCircle(Shape *polygon, Shape *circle, CollisionPair *coll
     collPair->contactCount = 0;
     collPair->collided = false;
     CircleShapeData *circleData = (CircleShapeData *)circle->data;
-    
 
     Vector2 closestPoint = transformedPoints[0];
 
@@ -985,32 +985,15 @@ void resolveCollisionPairs(RigidBody **bodies, CollisionPairs *collPairs)
 }
 void resolveCollisionPair(RigidBody **bodies, CollisionPair *collPair)
 {
-
     RigidBody *bodyA = bodies[collPair->idA];
     RigidBody *bodyB = bodies[collPair->idB];
-
-    // Correcting position
-
     float invMassA = safeInv(bodyA->mass);
     float invMassB = safeInv(bodyB->mass);
+    float invInertiaA = safeInv(bodyA->momentOfInertia);
+    float invInertiaB = safeInv(bodyB->momentOfInertia);
     float sumInvMass = invMassA + invMassB;
 
-    Vector2 correctionA = multiplyVectorF(&collPair->axis, collPair->MTVlength * (invMassA / sumInvMass));
-    Vector2 correctionB = multiplyVectorF(&collPair->axis, collPair->MTVlength * (invMassB / sumInvMass));
-    // If either body is immovable (mass = INFINITY), push only the movable one
-    if (bodyA->mass == INFINITY)
-    {
-        bodyB->shape.transform.pos = addVectors(&bodyB->shape.transform.pos, &correctionB);
-    }
-    else if (bodyB->mass == INFINITY)
-    {
-        bodyA->shape.transform.pos = substractVectors(&bodyA->shape.transform.pos, &correctionA);
-    }
-    else
-    {
-        bodyA->shape.transform.pos = substractVectors(&bodyA->shape.transform.pos, &correctionA);
-        bodyB->shape.transform.pos = addVectors(&bodyB->shape.transform.pos, &correctionB);
-    }
+    collPair->axis = normalize(&collPair->axis);
 
     // Impulses for each contact point
     for (size_t i = 0; i < collPair->contactCount; i++)
@@ -1029,29 +1012,33 @@ void resolveCollisionPair(RigidBody **bodies, CollisionPair *collPair)
         Vector2 relativeVelocity = substractVectors(&velocityB, &velocityA);
 
         float velAlongNormal = dotProduct(&relativeVelocity, &collPair->axis);
-        if (velAlongNormal > 0)
+        if (velAlongNormal >= 0)
         {
             continue;
         }
-        float denom = (1 / bodyA->mass + 1 / bodyB->mass) +
-                      (powf(crossProduct(&rA, &collPair->axis), 2) / bodyA->momentOfInertia) +
-                      (powf(crossProduct(&rB, &collPair->axis), 2) / bodyB->momentOfInertia);
+
+        printf("BodyA: mass=%.3f, I=%.3f\n", bodyA->mass, bodyA->momentOfInertia);
+        printf("BodyB: mass=%.3f, I=%.3f\n", bodyB->mass, bodyB->momentOfInertia);
+        float denom = sumInvMass +
+                      (powf(crossProduct(&rA, &collPair->axis), 2) / invInertiaA) +
+                      (powf(crossProduct(&rB, &collPair->axis), 2) / invInertiaB);
 
         float bounciness = fminf(bodyA->restitution, bodyB->restitution);
         float j = -(1 + bounciness) * (dotProduct(&relativeVelocity, &collPair->axis)) / denom;
+        printf("velAlongNormal=%.3f, denom=%.3f, j=%.3f\n", velAlongNormal, denom, j);
 
         Vector2 impulseOnContact = multiplyVectorF(&collPair->axis, j);
 
         // Linear
         if (bodyA->mass != INFINITY)
         {
-            Vector2 linearChangeA = multiplyVectorF(&impulseOnContact, 1 / bodyA->mass);
+            Vector2 linearChangeA = multiplyVectorF(&impulseOnContact, invMassA);
             bodyA->linearVel = substractVectors(&bodyA->linearVel, &linearChangeA);
         }
 
         if (bodyB->mass != INFINITY)
         {
-            Vector2 linearChangeB = multiplyVectorF(&impulseOnContact, 1 / bodyB->mass);
+            Vector2 linearChangeB = multiplyVectorF(&impulseOnContact, invMassB);
             bodyB->linearVel = addVectors(&bodyB->linearVel, &linearChangeB);
         }
 
@@ -1061,6 +1048,24 @@ void resolveCollisionPair(RigidBody **bodies, CollisionPair *collPair)
 
         if (bodyB->momentOfInertia != INFINITY)
             bodyB->angularVel += crossProduct(&rB, &impulseOnContact) / bodyB->momentOfInertia;
+    }
+
+    // Correcting position
+    Vector2 correctionA = multiplyVectorF(&collPair->axis, collPair->MTVlength * (invMassA / sumInvMass));
+    Vector2 correctionB = multiplyVectorF(&collPair->axis, collPair->MTVlength * (invMassB / sumInvMass));
+    // If either body is immovable (mass = INFINITY), push only the movable one
+    if (bodyA->mass == INFINITY)
+    {
+        bodyB->shape.transform.pos = addVectors(&bodyB->shape.transform.pos, &correctionB);
+    }
+    else if (bodyB->mass == INFINITY)
+    {
+        bodyA->shape.transform.pos = substractVectors(&bodyA->shape.transform.pos, &correctionA);
+    }
+    else
+    {
+        bodyA->shape.transform.pos = substractVectors(&bodyA->shape.transform.pos, &correctionA);
+        bodyB->shape.transform.pos = addVectors(&bodyB->shape.transform.pos, &correctionB);
     }
 }
 

@@ -14,6 +14,7 @@ void tick(Display *display, Window window, GC gc, float deltaTime);
 void drawWholeScene();
 
 void drawShape(Shape *shape);
+void drawAABB(Shape *shape);
 void drawPoint(Vector2 *p);
 void drawLine(Vector2 *p1, Vector2 *p2);
 

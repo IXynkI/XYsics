@@ -22,6 +22,7 @@ void drawWholeScene()
     for (size_t i = 0; i < world.bodies_count; i++)
     {
         drawShape(&world.bodies[i]->shape);
+        drawAABB(&world.bodies[i]->shape);
     }
 }
 
@@ -42,6 +43,18 @@ void drawShape(Shape *shape)
         break;
     }
 }
+void drawAABB(Shape *shape)
+{
+    Vector2 points[4];
+    points[0] = shape->bounds.max;
+    points[1] = (Vector2){shape->bounds.min.x, shape->bounds.max.y};
+    points[2] = (Vector2){shape->bounds.min.x, shape->bounds.min.y};
+    points[3] = (Vector2){shape->bounds.max.x, shape->bounds.min.y};
+    for (size_t i = 0; i < 4; i++)
+    {
+        drawLine(&points[i], &points[(i + 1) % 4]);
+    }
+}
 void drawPoint(Vector2 *p)
 {
     XDrawPoint(display, window, gc, p->x, p->y);
@@ -60,21 +73,19 @@ void drawBox(Shape *shape)
         printf("Matrix:\n");
     printf("[ %f  %f ]\n", m->m00, m->m01);
     printf("[ %f  %f ]\n", m->m10, m->m11);
-    
+
     */
 
-    float halfW = data->width / 2;
-    float halfH = data->height / 2;
+    float halfW = (data->width / 2) * RENDER_SCALE;
+    float halfH = (data->height / 2) * RENDER_SCALE;
 
     Vector2 points[4] = {
         {-halfW, -halfH}, {halfW, -halfH}, {halfW, halfH}, {-halfW, halfH}};
 
-    
     for (size_t i = 0; i < 4; i++)
     {
         points[i] = transformPoint(shape->transform, points[i]);
     }
-
 
     for (size_t i = 0; i < 4; i++)
     {
@@ -88,7 +99,12 @@ void drawPolygon(Shape *shape)
     Vector2 tPoints[data->count];
 
     transformPoints(shape->transform, data->points, data->count, tPoints);
-    
+
+    for (size_t i = 0; i < data->count; i++)
+    {
+        tPoints[i] = multiplyVectorF(&tPoints[i], RENDER_SCALE);
+    }
+
     for (size_t i = 0; i < data->count; i++)
     {
         drawLine(&tPoints[i], &tPoints[(i + 1) % data->count]);
@@ -97,18 +113,8 @@ void drawPolygon(Shape *shape)
 
 void drawCircle(Shape *shape)
 {
-    if (shape == NULL) {
-        printf("Shape is NULL\n");
-        return;
-    }
-
-    if (shape->data == NULL) {
-        printf("Shape data is NULL\n");
-        return;
-    }
-    
     CircleShapeData *data = (CircleShapeData *)shape->data;
-    float r = data->r;
+    float r = data->r * RENDER_SCALE;
 
     XDrawArc(display, window, gc,
              shape->transform.pos.x - r, shape->transform.pos.y - r,

@@ -51,7 +51,6 @@ void transformPoints(Transform t, Vector2 points[], size_t count, Vector2 result
 }
 
 float getRotationalAngleRad(Matrix2 R){
-    printf("R.m00=%.2f, R.m10=%.2f\n", R.m00, R.m10);
     return atan2(R.m10, R.m00);
 }
 float getRotationalAngleDeg(Matrix2 R){

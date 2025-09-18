@@ -12,7 +12,6 @@ typedef struct
     Vector2 force;
 
     float restitution;
-    float angle;
     float angularVel;
     float torque;
     float mass;

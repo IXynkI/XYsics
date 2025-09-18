@@ -10,7 +10,10 @@
 
 
 
-RigidBody *createRigidBody(Shape shape, Vector2 linearVelocity, Vector2 force, float restitution, float angle, float angularVelocity, float torque, float mass, float momentOfInertia);
+RigidBody *createRigidBody(Shape shape, Vector2 linearVelocity, Vector2 force, float restitution, float angularVelocity, float torque, float mass);
 void applyForcesAndMove(World *world, float deltaTime);
+float calculateInertia(RigidBody *body);
+float calculateInertiaPolygon(RigidBody *body);
+
 
 #endif
