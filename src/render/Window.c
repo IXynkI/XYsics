@@ -2,7 +2,8 @@
 
 
 // window/Window.c
-#include "render/Window.h"
+#include <render/Window.h>
+#include <Globals.h>
 
 #include <X11/Xutil.h>
 #include <stdlib.h>
@@ -48,6 +49,9 @@ void windowRun(void (*drawCallback)(Display *, Window, GC, float))
     struct timespec prev, current;
     clock_gettime(CLOCK_MONOTONIC, &prev);
 
+    XSelectInput(display, window, StructureNotifyMask);
+
+
     while (running)
     {
         while (XPending(display))
@@ -64,6 +68,11 @@ void windowRun(void (*drawCallback)(Display *, Window, GC, float))
         float deltaTime = (current.tv_sec - prev.tv_sec) +
                           (current.tv_nsec - prev.tv_nsec) / 1000000000.0f;
         prev = current;
+
+        if (event.type == ConfigureNotify){
+            windowH = event.xconfigure.height;
+            windowW = event.xconfigure.width;
+        }
 
         if (drawCallback)
         {

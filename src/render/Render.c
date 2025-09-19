@@ -52,6 +52,15 @@ void drawAABB(Shape *shape)
     points[3] = (Vector2){shape->bounds.max.x, shape->bounds.min.y};
     for (size_t i = 0; i < 4; i++)
     {
+        points[i].x -= camera.pos.x;
+        points[i].y -= camera.pos.y;
+        points[i].x *= camera.zoom;
+        points[i].y *= camera.zoom;
+        points[i].x += windowW/2;
+        points[i].y += windowH/2;
+    }
+    for (size_t i = 0; i < 4; i++)
+    {
         drawLine(&points[i], &points[(i + 1) % 4]);
     }
 }
@@ -76,8 +85,8 @@ void drawBox(Shape *shape)
 
     */
 
-    float halfW = (data->width / 2) * RENDER_SCALE;
-    float halfH = (data->height / 2) * RENDER_SCALE;
+    float halfW = (data->width / 2);
+    float halfH = (data->height / 2);
 
     Vector2 points[4] = {
         {-halfW, -halfH}, {halfW, -halfH}, {halfW, halfH}, {-halfW, halfH}};
@@ -85,6 +94,13 @@ void drawBox(Shape *shape)
     for (size_t i = 0; i < 4; i++)
     {
         points[i] = transformPoint(shape->transform, points[i]);
+        
+        points[i].x -= camera.pos.x;
+        points[i].y -= camera.pos.y;
+        points[i].x *= camera.zoom;
+        points[i].y *= camera.zoom;
+        points[i].x += windowW/2;
+        points[i].y += windowH/2;
     }
 
     for (size_t i = 0; i < 4; i++)
@@ -102,11 +118,12 @@ void drawPolygon(Shape *shape)
 
     for (size_t i = 0; i < data->count; i++)
     {
-        tPoints[i] = multiplyVectorF(&tPoints[i], RENDER_SCALE);
-    }
-
-    for (size_t i = 0; i < data->count; i++)
-    {
+        tPoints[i].x -= camera.pos.x;
+        tPoints[i].y -= camera.pos.y;
+        tPoints[i].x *= camera.zoom;
+        tPoints[i].y *= camera.zoom;
+        tPoints[i].x += windowW/2;
+        tPoints[i].y += windowH/2;
         drawLine(&tPoints[i], &tPoints[(i + 1) % data->count]);
     }
 }
@@ -114,10 +131,19 @@ void drawPolygon(Shape *shape)
 void drawCircle(Shape *shape)
 {
     CircleShapeData *data = (CircleShapeData *)shape->data;
-    float r = data->r * RENDER_SCALE;
+    float r = data->r;
+    r *= camera.zoom;
+
+    Vector2 screenPos = {0,0};
+    screenPos.x += shape->transform.pos.x - camera.pos.x;
+    screenPos.y += shape->transform.pos.y - camera.pos.y;
+    screenPos.x *= camera.zoom;
+    screenPos.y *= camera.zoom;
+    screenPos.x += windowW/2;
+    screenPos.y += windowH/2;
 
     XDrawArc(display, window, gc,
-             shape->transform.pos.x - r, shape->transform.pos.y - r,
+             screenPos.x - r, screenPos.y - r,
              r * 2, r * 2,
              0, 360 * 64);
 }

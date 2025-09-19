@@ -9,10 +9,15 @@
 
 const BODIES_COUNT = 3;
 World world;
+Camera camera;
+float windowW;
+float windowH;
 
 int main()
 {
-
+    Vector2 camPos = {400,400};
+    moveAndZoomCamera(&camera, camPos, 3);
+    
     Vector2 pos = {150, 400};
     Vector2 pos2 = {900, 400};
 
@@ -48,7 +53,7 @@ int main()
 
     
     
-    if (!windowInit(1280, 720, "test"))
+    if (!windowInit(2000, 1000, "test"))
     {
         return -1;
     }

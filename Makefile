@@ -23,3 +23,8 @@ $(OUT): $(OBJ)
 # Правило компиляции каждого .c → .o
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
+
+.PHONY: clean
+
+clean:
+	rm -f $(OBJ) $(OUT)
