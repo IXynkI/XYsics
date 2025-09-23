@@ -3,9 +3,6 @@
 #include <World.h>
 #include <render/Camera.h>
 
-#define RENDER_SCALE 2.0f
-
-
 extern float GRAVITY;
 
 extern float windowW;

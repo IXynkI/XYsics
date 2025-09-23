@@ -1020,8 +1020,8 @@ void resolveCollisionPair(RigidBody **bodies, CollisionPair *collPair)
         printf("BodyA: mass=%.3f, I=%.3f\n", bodyA->mass, bodyA->momentOfInertia);
         printf("BodyB: mass=%.3f, I=%.3f\n", bodyB->mass, bodyB->momentOfInertia);
         float denom = sumInvMass +
-                      (powf(crossProduct(&rA, &collPair->axis), 2) / invInertiaA) +
-                      (powf(crossProduct(&rB, &collPair->axis), 2) / invInertiaB);
+                      (powf(crossProduct(&rA, &collPair->axis), 2) * invInertiaA) +
+                      (powf(crossProduct(&rB, &collPair->axis), 2) * invInertiaB);
 
         float bounciness = fminf(bodyA->restitution, bodyB->restitution);
         float j = -(1 + bounciness) * (dotProduct(&relativeVelocity, &collPair->axis)) / denom;

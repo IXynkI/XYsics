@@ -24,14 +24,21 @@ int main()
     Vector2 linearVel = {7, -30};
     Vector2 force = {0, 0};
 
+    float restitution = 1;
+    float angularVelocity = 0;
+    float torque = 0;
+    float mass = 10;
+
     world = initWorld(BODIES_COUNT);
+    //Box
     Shape shape0 = createBox(10, 10, pos, 90);
-    RigidBody *body0 = createRigidBody(shape0, linearVel, force, 1, 30, 0, 10);
+    RigidBody *body0 = createRigidBody(shape0, linearVel, force, restitution, angularVelocity, torque, mass);
     addBody(&world, body0);
 
+    //Circle moving towards box
     Vector2 linearVel2 = {-100, -30};
     Shape shape1 = createCircle(10.0f, pos2);
-    RigidBody *body1 = createRigidBody(shape1, linearVel2, force, 1, 3, 0, 10);
+    RigidBody *body1 = createRigidBody(shape1, linearVel2, force, restitution, angularVelocity, torque, mass);
     addBody(&world, body1);
 
     Vector2 points[3];
@@ -47,9 +54,11 @@ int main()
         }
     }
 
+
+    //Triangle
     Shape *shape2 = createPolygon(points, 3, pos, 0);
-    RigidBody *body2 = createRigidBody(*shape2, linearVel, force, 0.5f, 3, 0, 1000);
-    //addBody(&world, body2);
+    RigidBody *body2 = createRigidBody(*shape2, linearVel, force, restitution, angularVelocity, torque, mass);
+    addBody(&world, body2);
 
     
     

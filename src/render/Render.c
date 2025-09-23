@@ -22,7 +22,7 @@ void drawWholeScene()
     for (size_t i = 0; i < world.bodies_count; i++)
     {
         drawShape(&world.bodies[i]->shape);
-        drawAABB(&world.bodies[i]->shape);
+        //drawAABB(&world.bodies[i]->shape);
     }
 }
 
@@ -114,16 +114,21 @@ void drawPolygon(Shape *shape)
     PolygonShapeData *data = (PolygonShapeData *)shape->data;
     Vector2 tPoints[data->count];
 
-    transformPoints(shape->transform, data->points, data->count, tPoints);
-
     for (size_t i = 0; i < data->count; i++)
     {
+        tPoints[i] = transformPoint(shape->transform, data->points[i]);
+
         tPoints[i].x -= camera.pos.x;
         tPoints[i].y -= camera.pos.y;
         tPoints[i].x *= camera.zoom;
         tPoints[i].y *= camera.zoom;
         tPoints[i].x += windowW/2;
         tPoints[i].y += windowH/2;
+    }
+    
+
+    for (size_t i = 0; i < data->count; i++)
+    {
         drawLine(&tPoints[i], &tPoints[(i + 1) % data->count]);
     }
 }
