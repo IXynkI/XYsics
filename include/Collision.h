@@ -3,6 +3,7 @@
 
 #include <Utils.h>
 #include <MathCore.h>
+#include <PhysicsCore.h>
 #include <structs/MathStructs.h>
 #include <structs/PhysicsStructs.h>
 #include <World.h>
@@ -26,6 +27,12 @@ typedef struct CollisionPairs
     size_t capacity;
 } CollisionPairs;
 
+typedef void (*CollisionResolver)(Body *a, Body *b, CollisionPair *collPair);
+
+extern CollisionResolver collisionTable[BODY_TYPE_NUM][BODY_TYPE_NUM];
+
+void initCollisionTable();
+
 bool TestAABBOverlap(AABB *a, AABB *b);
 bool TestPolygonOverlapSAT(Vector2 polygon1[], size_t size1, Vector2 polygon2[], size_t size2, CollisionPair *collPair);
 
@@ -45,13 +52,18 @@ void freeCollisionPairs(CollisionPairs *collPairs);
 
 int compareAABB_X(const void *p1, const void *p2);
 
-void resolveCollisionPairs(RigidBody **bodies, CollisionPairs *collPairs);
-void resolveCollisionPair(RigidBody **bodies, CollisionPair *collPair);
+void resolveCollisionPairs(Body **bodies, CollisionPairs *collPairs);
 
-void sweepAndPrune(RigidBody **bodies, size_t count, CollisionPairs *candidates);
+void sweepAndPrune(Body **bodies, size_t count, CollisionPairs *candidates);
 
-void checkNarrow(RigidBody **bodies, CollisionPairs *collPairs, CollisionPairs *canditates);
+void checkNarrow(Body **bodies, CollisionPairs *collPairs, CollisionPairs *canditates);
 
 void checkAndResolveCollisions(World *w);
+
+//Resolving any possible pair of collision
+void resolveRigidRigid(Body *a, Body *b, CollisionPair *collPair);
+void resolveRigidStatic(Body *a, Body *b, CollisionPair *collPair);
+void resolveStaticStatic(Body *a, Body *b, CollisionPair *collPair);
+
 
 #endif

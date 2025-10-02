@@ -15,32 +15,35 @@ float windowH;
 
 int main()
 {
+    initCollisionTable();
     Vector2 camPos = {400,400};
     moveAndZoomCamera(&camera, camPos, 3);
     
-    Vector2 pos = {150, 400};
+    Vector2 pos = {150, 800};
     Vector2 pos2 = {900, 400};
 
     Vector2 linearVel = {7, -30};
     Vector2 force = {0, 0};
 
-    float restitution = 1;
-    float angularVelocity = 0;
-    float torque = 0;
-    float mass = 10;
+    float restitution = 1.0f;
+    float angularVelocity = 0.0f;
+    float torque = 0.0f;
+    float mass = 10.0f;
 
     world = initWorld(BODIES_COUNT);
     //Box
-    Shape shape0 = createBox(10, 10, pos, 90);
-    RigidBody *body0 = createRigidBody(shape0, linearVel, force, restitution, angularVelocity, torque, mass);
+    Shape shape0 = createBox(2000, 10, pos, 0);
+    Body *body0 = createStaticBody(shape0, 0.25f);
     addBody(&world, body0);
 
     //Circle moving towards box
-    Vector2 linearVel2 = {-100, -30};
+    Vector2 linearVel2 = {-100, -35};
     Shape shape1 = createCircle(10.0f, pos2);
-    RigidBody *body1 = createRigidBody(shape1, linearVel2, force, restitution, angularVelocity, torque, mass);
+    Body *body1 = createRigidBody(shape1, restitution, mass);
     addBody(&world, body1);
-
+    setLinearVel(body1, linearVel2);
+    
+    //Triangle
     Vector2 points[3];
     for (size_t i = 0; i < 3; i++)
     {
@@ -55,12 +58,10 @@ int main()
     }
 
 
-    //Triangle
     Shape *shape2 = createPolygon(points, 3, pos, 0);
-    RigidBody *body2 = createRigidBody(*shape2, linearVel, force, restitution, angularVelocity, torque, mass);
-    addBody(&world, body2);
+    Body *body2 = createRigidBody(*shape2, restitution, mass);
+    //addBody(&world, body2);
 
-    
     
     if (!windowInit(2000, 1000, "test"))
     {
@@ -68,10 +69,6 @@ int main()
     }
     unsigned int white = getColorCode(COLOR_WHITE);
     unsigned int black = getColorCode(COLOR_BLACK);
-
-    Matrix2 testM = createRotationMatrix(90);
-    printf("\nRotation Matrix of 90 degrees m00: %f, m01: %f, m10: %f, m11: %f \n", testM.m00, testM.m01, testM.m10, testM.m11);
-
     setGCStyle(white, black, black, black);
     windowRun(tick);
 

@@ -5,14 +5,14 @@ World initWorld(int capacity){
     World world;
     world.bodies_count = 0;
     world.capacity = capacity;
-    world.bodies = malloc(sizeof(RigidBody *) * capacity);
+    world.bodies = malloc(sizeof(Body *) * capacity);
     return world;
 }
 
-void addBody(World *world, RigidBody *body){
+void addBody(World *world, Body *body){
     if(world->bodies_count >= world->capacity){
         world->capacity = world->capacity > 0 ? world->capacity * 2 : 16;
-        RigidBody **bodies = realloc(world->bodies, sizeof(RigidBody *) * world->capacity);
+        Body **bodies = realloc(world->bodies, sizeof(Body *) * world->capacity);
         if(!bodies){
             printf("\n FAILED TO REALLOC WORLD BODIES \n");
             exit(1);

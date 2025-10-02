@@ -118,7 +118,7 @@ void windowRun(void (*drawCallback)(Display *, Window, GC, float))
             drawCallback(display, window, gc, deltaTime);
         }
 
-        usleep(16000); // ~60 FPS
+        usleep(4166); // ~60 FPS
     }
 }
 

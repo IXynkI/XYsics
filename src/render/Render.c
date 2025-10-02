@@ -22,7 +22,7 @@ void drawWholeScene()
     for (size_t i = 0; i < world.bodies_count; i++)
     {
         drawShape(&world.bodies[i]->shape);
-        //drawAABB(&world.bodies[i]->shape);
+        drawAABB(&world.bodies[i]->shape);
     }
 }
 
@@ -78,12 +78,6 @@ void drawBox(Shape *shape)
     BoxShapeData *data = (BoxShapeData *)shape->data;
     Matrix2 *m = &shape->transform.R;
 
-    /*
-        printf("Matrix:\n");
-    printf("[ %f  %f ]\n", m->m00, m->m01);
-    printf("[ %f  %f ]\n", m->m10, m->m11);
-
-    */
 
     float halfW = (data->width / 2);
     float halfH = (data->height / 2);

@@ -4,6 +4,19 @@
 #include <Globals.h>
 #include <functions/Transform.h>
 
+CollisionResolver collisionTable[BODY_TYPE_NUM][BODY_TYPE_NUM];
+
+void initCollisionTable()
+{
+    // Rigid
+    collisionTable[RIGID_BODY][RIGID_BODY] = resolveRigidRigid;
+    collisionTable[RIGID_BODY][STATIC_BODY] = resolveRigidStatic;
+
+    // Static
+    collisionTable[STATIC_BODY][STATIC_BODY] = resolveStaticStatic;
+    collisionTable[STATIC_BODY][RIGID_BODY] = resolveRigidStatic;
+}
+
 bool TestAABBOverlap(AABB *a, AABB *b)
 {
     float d1x = a->min.x - b->max.x;
@@ -157,12 +170,6 @@ bool checkNarrowBoxCircle(Shape *box, Shape *circle, CollisionPair *collPair)
             localMTV = (Vector2){normal.x * penetration, normal.y * penetration};
 
             contacts[contactCount++] = closestPoint;
-
-            // If in the corner, adding the second contact point from neighbouring edge
-            if ((fabsf(closestPoint.x) == halfWidth) && (fabsf(closestPoint.y) == halfHeight))
-            {
-                contacts[contactCount++] = (Vector2){closestPoint.x, 0};
-            }
         }
         else // Circle inside
         {
@@ -176,9 +183,6 @@ bool checkNarrowBoxCircle(Shape *box, Shape *circle, CollisionPair *collPair)
                 penetration = dx;
 
                 contacts[contactCount++] = (Vector2){sign * halfWidth, circleInLocal.y};
-                // If in the corner, adding the second contact point from neighbouring edge
-                if (fabsf(circleInLocal.y) >= halfHeight - 1e-6f)
-                    contacts[contactCount++] = (Vector2){sign * halfWidth, (circleInLocal.y > 0 ? halfHeight : -halfHeight)};
             }
             else
             {
@@ -187,9 +191,6 @@ bool checkNarrowBoxCircle(Shape *box, Shape *circle, CollisionPair *collPair)
                 penetration = dy;
 
                 contacts[contactCount++] = (Vector2){circleInLocal.x, sign * halfHeight};
-                // If in the corner, adding the second contact point from neighbouring edge
-                if (fabsf(circleInLocal.x) >= halfWidth - 1e-6f)
-                    contacts[contactCount++] = (Vector2){(circleInLocal.x > 0 ? halfWidth : -halfWidth), sign * halfHeight};
             }
         }
 
@@ -453,11 +454,6 @@ bool checkNarrowCircleCircle(Shape *circle0, Shape *circle1, CollisionPair *coll
 }
 bool checkNarrowPolygonCircle(Shape *polygon, Shape *circle, CollisionPair *collPair)
 {
-
-    if (polygon->type != SHAPE_POLYGON)
-    {
-        printf("Polygon isn't polygon");
-    }
     PolygonShapeData *polygonData = (PolygonShapeData *)polygon->data;
 
     Vector2 transformedPoints[polygonData->count];
@@ -818,8 +814,8 @@ void freeCollisionPairs(CollisionPairs *collPairs)
 
 int compareAABB_X(const void *p1, const void *p2)
 {
-    const RigidBody *a = *(const RigidBody **)p1;
-    const RigidBody *b = *(const RigidBody **)p2;
+    const Body *a = *(const Body **)p1;
+    const Body *b = *(const Body **)p2;
     if (a->shape.bounds.min.x < b->shape.bounds.min.x)
         return -1;
     if (a->shape.bounds.min.x > b->shape.bounds.min.x)
@@ -827,15 +823,20 @@ int compareAABB_X(const void *p1, const void *p2)
     return 0;
 }
 
-void sweepAndPrune(RigidBody **bodies, size_t count, CollisionPairs *candidates)
+void sweepAndPrune(Body **bodies, size_t count, CollisionPairs *candidates)
 {
-    qsort(bodies, count, sizeof(RigidBody *), compareAABB_X);
+    qsort(bodies, count, sizeof(Body *), compareAABB_X);
     for (size_t i = 0; i < count; i++)
     {
-        RigidBody *a = bodies[i];
+        Body *a = bodies[i];
         for (size_t j = i + 1; j < count; j++)
         {
-            RigidBody *b = bodies[j];
+            Body *b = bodies[j];
+
+            if (a->type == STATIC_BODY && b->type == STATIC_BODY)
+            {
+                break;
+            }
 
             if (b->shape.bounds.min.x > a->shape.bounds.max.x)
             {
@@ -854,7 +855,7 @@ void sweepAndPrune(RigidBody **bodies, size_t count, CollisionPairs *candidates)
     }
 }
 
-void checkNarrow(RigidBody **bodies, CollisionPairs *collPairs, CollisionPairs *canditates)
+void checkNarrow(Body **bodies, CollisionPairs *collPairs, CollisionPairs *canditates)
 {
     for (size_t i = 0; i < collPairs->count; i++)
     {
@@ -976,99 +977,19 @@ void checkNarrow(RigidBody **bodies, CollisionPairs *collPairs, CollisionPairs *
     }
 }
 
-void resolveCollisionPairs(RigidBody **bodies, CollisionPairs *collPairs)
+void resolveCollisionPairs(Body **bodies, CollisionPairs *collPairs)
 {
     for (size_t i = 0; i < collPairs->count; i++)
     {
-        resolveCollisionPair(bodies, &collPairs->pairs[i]);
+        CollisionPair *collPair = &collPairs->pairs[i];
+        Body *a = bodies[collPair->idA];
+        Body *b = bodies[collPair->idB];
+        BodyType typeA = a->type;
+        BodyType typeB = b->type;
+
+        collisionTable[typeA][typeB](a, b, collPair);
     }
 }
-void resolveCollisionPair(RigidBody **bodies, CollisionPair *collPair)
-{
-    RigidBody *bodyA = bodies[collPair->idA];
-    RigidBody *bodyB = bodies[collPair->idB];
-    float invMassA = safeInv(bodyA->mass);
-    float invMassB = safeInv(bodyB->mass);
-    float invInertiaA = safeInv(bodyA->momentOfInertia);
-    float invInertiaB = safeInv(bodyB->momentOfInertia);
-    float sumInvMass = invMassA + invMassB;
-
-    collPair->axis = normalize(&collPair->axis);
-
-    // Impulses for each contact point
-    for (size_t i = 0; i < collPair->contactCount; i++)
-    {
-        // Relative vectors from centers to contact point or points
-        Vector2 rA = substractVectors(&collPair->contactPoints[i], &bodyA->shape.transform.pos);
-        Vector2 rB = substractVectors(&collPair->contactPoints[i], &bodyB->shape.transform.pos);
-        Vector2 crossA = crossProductVF(&rA, bodyA->angularVel);
-        Vector2 crossB = crossProductVF(&rB, bodyB->angularVel);
-
-        // Velocity in contact point
-        Vector2 velocityA = addVectors(&bodyA->linearVel, &crossA);
-        Vector2 velocityB = addVectors(&bodyB->linearVel, &crossB);
-
-        // Relative velocity in contact point
-        Vector2 relativeVelocity = substractVectors(&velocityB, &velocityA);
-
-        float velAlongNormal = dotProduct(&relativeVelocity, &collPair->axis);
-        if (velAlongNormal >= 0)
-        {
-            continue;
-        }
-
-        printf("BodyA: mass=%.3f, I=%.3f\n", bodyA->mass, bodyA->momentOfInertia);
-        printf("BodyB: mass=%.3f, I=%.3f\n", bodyB->mass, bodyB->momentOfInertia);
-        float denom = sumInvMass +
-                      (powf(crossProduct(&rA, &collPair->axis), 2) * invInertiaA) +
-                      (powf(crossProduct(&rB, &collPair->axis), 2) * invInertiaB);
-
-        float bounciness = fminf(bodyA->restitution, bodyB->restitution);
-        float j = -(1 + bounciness) * (dotProduct(&relativeVelocity, &collPair->axis)) / denom;
-        printf("velAlongNormal=%.3f, denom=%.3f, j=%.3f\n", velAlongNormal, denom, j);
-
-        Vector2 impulseOnContact = multiplyVectorF(&collPair->axis, j);
-
-        // Linear
-        if (bodyA->mass != INFINITY)
-        {
-            Vector2 linearChangeA = multiplyVectorF(&impulseOnContact, invMassA);
-            bodyA->linearVel = substractVectors(&bodyA->linearVel, &linearChangeA);
-        }
-
-        if (bodyB->mass != INFINITY)
-        {
-            Vector2 linearChangeB = multiplyVectorF(&impulseOnContact, invMassB);
-            bodyB->linearVel = addVectors(&bodyB->linearVel, &linearChangeB);
-        }
-
-        // Rotation
-        if (bodyA->momentOfInertia != INFINITY)
-            bodyA->angularVel -= crossProduct(&rA, &impulseOnContact) / bodyA->momentOfInertia;
-
-        if (bodyB->momentOfInertia != INFINITY)
-            bodyB->angularVel += crossProduct(&rB, &impulseOnContact) / bodyB->momentOfInertia;
-    }
-
-    // Correcting position
-    Vector2 correctionA = multiplyVectorF(&collPair->axis, collPair->MTVlength * (invMassA / sumInvMass));
-    Vector2 correctionB = multiplyVectorF(&collPair->axis, collPair->MTVlength * (invMassB / sumInvMass));
-    // If either body is immovable (mass = INFINITY), push only the movable one
-    if (bodyA->mass == INFINITY)
-    {
-        bodyB->shape.transform.pos = addVectors(&bodyB->shape.transform.pos, &correctionB);
-    }
-    else if (bodyB->mass == INFINITY)
-    {
-        bodyA->shape.transform.pos = substractVectors(&bodyA->shape.transform.pos, &correctionA);
-    }
-    else
-    {
-        bodyA->shape.transform.pos = substractVectors(&bodyA->shape.transform.pos, &correctionA);
-        bodyB->shape.transform.pos = addVectors(&bodyB->shape.transform.pos, &correctionB);
-    }
-}
-
 void checkAndResolveCollisions(World *w)
 {
     if (w->bodies_count == 0 || w->bodies_count == 1)
@@ -1088,6 +1009,99 @@ void checkAndResolveCollisions(World *w)
     sweepAndPrune(w->bodies, w->bodies_count, &collPairsBroad);
 
     checkNarrow(w->bodies, &collPairsBroad, &collPairsNarrow);
-
+    freeCollisionPairs(&collPairsBroad);
     resolveCollisionPairs(w->bodies, &collPairsNarrow);
+    freeCollisionPairs(&collPairsNarrow);
+}
+
+void resolveRigidRigid(Body *a, Body *b, CollisionPair *collPair)
+{
+    RigidBodyData *dataA = (RigidBodyData *)a->data;
+    RigidBodyData *dataB = (RigidBodyData *)b->data;
+
+    float invMassA = safeInv(dataA->mass);
+    float invMassB = safeInv(dataB->mass);
+    float invInertiaA = safeInv(dataA->momentOfInertia);
+    float invInertiaB = safeInv(dataB->momentOfInertia);
+    float sumInvMass = invMassA + invMassB;
+
+    collPair->axis = normalize(&collPair->axis);
+
+    // Impulses for each contact point
+    for (size_t i = 0; i < collPair->contactCount; i++)
+    {
+        // Relative vectors from centers to contact point or points
+        Vector2 rA = substractVectors(&collPair->contactPoints[i], &a->shape.transform.pos);
+        Vector2 rB = substractVectors(&collPair->contactPoints[i], &b->shape.transform.pos);
+
+        Vector2 impulseOnContact = getImpulseAtContact(&collPair->axis, &collPair->contactPoints[i], &a->shape.transform.pos, &b->shape.transform.pos, &dataA->linearVel, &dataB->linearVel, dataA->angularVel, dataB->angularVel, invInertiaA, invInertiaB, sumInvMass, dataA->restitution, dataB->restitution);
+
+        // Linear
+        Vector2 linearChangeA = multiplyVectorF(&impulseOnContact, invMassA);
+        dataA->linearVel = substractVectors(&dataA->linearVel, &linearChangeA);
+        Vector2 linearChangeB = multiplyVectorF(&impulseOnContact, invMassB);
+        dataB->linearVel = addVectors(&dataB->linearVel, &linearChangeB);
+
+        // Rotation
+        dataA->angularVel -= crossProduct(&rA, &impulseOnContact) / dataA->momentOfInertia;
+        dataB->angularVel += crossProduct(&rB, &impulseOnContact) / dataB->momentOfInertia;
+    }
+
+    // Correcting position
+    Vector2 correctionA = multiplyVectorF(&collPair->axis, collPair->MTVlength * (invMassA / sumInvMass));
+    Vector2 correctionB = multiplyVectorF(&collPair->axis, collPair->MTVlength * (invMassB / sumInvMass));
+
+    a->shape.transform.pos = substractVectors(&a->shape.transform.pos, &correctionA);
+    b->shape.transform.pos = addVectors(&b->shape.transform.pos, &correctionB);
+}
+void resolveRigidStatic(Body *a, Body *b, CollisionPair *collPair)
+{
+    // Making sure that A is a Rigid and B is a static
+    if (a->type == STATIC_BODY && b->type == RIGID_BODY)
+    {
+        Body *tmp = a;
+        a = b;
+        b = tmp;
+    }
+    RigidBodyData *dataA = (RigidBodyData *)a->data;
+    StaticBodyData *dataB = (StaticBodyData *)b->data;
+
+    float invMassA = safeInv(dataA->mass);
+    float invMassB = safeInv(dataB->mass);
+    float invInertiaA = safeInv(dataA->momentOfInertia);
+    float invInertiaB = 0.0f;
+    float sumInvMass = invMassA + invMassB;
+
+    collPair->axis = normalize(&collPair->axis);
+
+    Vector2 centerAtoB = substractVectors(&b->shape.transform.pos, &a->shape.transform.pos);
+    if (dotProduct(&centerAtoB, &collPair->axis) < 0)
+    {
+        collPair->axis = reverseVector(&collPair->axis);
+    }
+
+
+    // Impulses for each contact point
+    for (size_t i = 0; i < collPair->contactCount; i++)
+    {
+        // Relative vectors from centers to contact point or points
+        Vector2 rA = substractVectors(&collPair->contactPoints[i], &a->shape.transform.pos);
+
+        Vector2 impulseOnContact = getImpulseAtContactStatic(&collPair->axis, &collPair->contactPoints[i], &a->shape.transform.pos, &b->shape.transform.pos, &dataA->linearVel, dataA->angularVel, invInertiaA, invMassA, dataA->restitution, dataB->restitution);
+        // Linear
+        Vector2 linearChangeA = multiplyVectorF(&impulseOnContact, invMassA);
+        dataA->linearVel = substractVectors(&dataA->linearVel, &linearChangeA);
+        
+        // Rotation
+        dataA->angularVel -= crossProduct(&rA, &impulseOnContact) * invInertiaA;
+    }
+
+    // Correction
+    float percent = 1.0f; // Correction slop
+    Vector2 correctionA = multiplyVectorF(&collPair->axis, collPair->MTVlength * percent);
+    a->shape.transform.pos = substractVectors(&a->shape.transform.pos, &correctionA);
+}
+void resolveStaticStatic(Body *a, Body *b, CollisionPair *collPair)
+{
+    return;
 }

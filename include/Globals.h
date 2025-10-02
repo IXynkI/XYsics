@@ -4,6 +4,7 @@
 #include <render/Camera.h>
 
 #define CAMERA_MOVE_SPEED 1.0f
+#define MAX_IMPULSE 10000.0f
 
 extern float GRAVITY;
 
